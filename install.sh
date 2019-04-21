@@ -29,13 +29,13 @@ elif PKG_MANAGER=$(command -v port) > /dev/null 2>&1; then
   USE_SUDO='sudo '
 fi
 
-PNGOUT_VERSION='20120530'
+PNGOUT_VERSION='20150920'
 
 function installTinyPng ()
 {
-  sudo cp tinypng /usr/bin/tinypng
-  sudo chmod +x /usr/bin/tinypng
-  echo "TinyPNG installed in /usr/bin/tinypng"
+  sudo cp tinypng /usr/local/bin/tinypng
+  sudo chmod +x /usr/local/bin/tinypng
+  echo "TinyPNG installed in /usr/local/bin/tinypng"
 }
 
 function installUtils ()
@@ -69,9 +69,9 @@ You need to install one of the following
     mkdir -p pngout
     PNGOUT_URL="http://static.jonof.id.au/dl/kenutils/pngout-${PNGOUT_VERSION}-darwin.tar.gz"
     curl -# $PNGOUT_URL | tar -xz --strip 1 --directory pngout 2>&1 > /dev/null
-    sudo mv pngout/pngout /usr/bin/pngout
-    sudo chmod +x /usr/bin/pngout
-    echo "PNGOUT installed in /usr/bin/pngout"
+    sudo mv pngout/pngout /usr/local/bin/pngout
+    sudo chmod +x /usr/local/bin/pngout
+    echo "PNGOUT installed in /usr/local/bin/pngout"
 
     installTinyPng
     cleanup

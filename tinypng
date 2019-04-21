@@ -20,6 +20,7 @@ LOGFILE="/tmp/tinypng.log"
 ERRORLOG="/tmp/tinypng_error.log"
 DATE=`date "+%y%m%d_%H%M%S"`
 BACKUP="/tmp/tinypng_"$DATE
+#BACKUP="/tmp/tinypng_bak"
 PWD=`pwd`
 path=$PWD/$TARGET
 
@@ -30,18 +31,21 @@ COL_RED=$ESC_SEQ"31;01m"
 COL_GREEN=$ESC_SEQ"32;01m"
 COL_CYAN=$ESC_SEQ"36;01m"
 
+DEBUG=$TINY_DEBUG
+TINYPNG_WORK_DIR='/tmp/tinypng'
+
 #Copy original files
 function copy() {
   echo "tinypng: Make backup copy"
-  mkdir $BACKUP
+  #mkdir $BACKUP
   cp -r $path $BACKUP
 }
 
 #Compress orgininal copy
 function backup() {
   echo "tinypng: Compress backup"
-  tar czf /tmp/tinypng_$DATE.tar.gz /tmp/tinypng_$DATE  2> /dev/null
-  rm -r /tmp/tinypng_$DATE/
+  #tar czf /tmp/tinypng_$DATE.tar.gz /tmp/tinypng_$DATE  2> /dev/null
+  #rm -r /tmp/tinypng_$DATE/
 }
 
 #Count PNGs in targeted folder
@@ -96,35 +100,56 @@ function crushdir() {
 }
 
 function crushfile() {
-  echo "tinypng: Crush file"
-  let start=`ls -l $TARGET | tr -s " " | cut -d " " -f 5`
+  if $DEBUG ;then
+    echo "tinypng: Crush file"
+    ## the command `ls` maybe on the wrong wordir... Be carefull
+    let start=`ls -l $TARGET | tr -s " " | cut -d " " -f 5`
+  fi
   crunshPNG $TARGET
-  let end=`ls -l $TARGET | tr -s " " | cut -d " " -f 5`
-  sum=$(($start-$end))
-  percent=$(($sum*100/$start))
-  echo $TARGET "Saved:" $sum "Bytes ("$percent "%)"
-  echo $TARGET "Saved:" $sum "Bytes ("$percent "%)" >> $LOGFILE
-  echo "Backup: /tmp/"$DATE".tar.gz" >> $LOGFILE
+  if $DEBUG ;then
+    ## the command `ls` maybe on the wrong wordir... Be carefull
+    let end=`ls -l $TARGET | tr -s " " | cut -d " " -f 5`
+    sum=$(($start-$end))
+    percent=$(($sum*100/$start))
+    echo $TARGET "Saved:" $sum "Bytes ("$percent "%)"
+    echo $TARGET "Saved:" $sum "Bytes ("$percent "%)" >> $PICGO
+
+  fi
+  #echo $TARGET "Saved:" $sum "Bytes ("$percent "%)" >> $LOGFILE
+  #echo "Backup: /tmp/"$DATE".tar.gz" >> $LOGFILE
 }
 
 function crunshPNG() {
-  EXTLESS=`echo $1 | sed -e 's/\.png$//'`
+  local var localName="$1"
+  # EXTLESS=`echo $1 | sed -e 's/\.png$//'`
+  # get file name
+  EXTLESS=`echo ${localName##*/} | sed -e 's/\.png$//'`
+
+  midFile="$TINYPNG_WORK_DIR/.tmp/$EXTLESS"
+
   convert $1 -background Black -alpha Background $1
-  pngnq -n 256 -e '-pngnq.png' -d .tinypngtmp $1
-  pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB -brute -l 9 -max -reduce -m 0 -q .tinypngtmp/$EXTLESS-pngnq.png .tinypngtmp/$EXTLESS-pngcrush.png
-  optipng -o7 -q -out .tinypngtmp/$EXTLESS-optipng.png .tinypngtmp/$EXTLESS-pngcrush.png
-  pngout -q -y -k0 -s0 .tinypngtmp/$EXTLESS-optipng.png .tinypngtmp/$EXTLESS-pngout.png
-  advpng -z -4 .tinypngtmp/$EXTLESS-pngout.png > /dev/null
-  mv .tinypngtmp/$EXTLESS-pngout.png $1
+  pngnq -f -n 256 -e '-pngnq.png' -d $TINYPNG_WORK_DIR/.tmp $1
+  # pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB -brute -l 9 -max -reduce -m 0 -q .tinypngtmp/$EXTLESS-pngnq.png .tinypngtmp/$EXTLESS-pngcrush.png
+  pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB -brute -l 9 -reduce -q "$midFile"-pngnq.png "$midFile"-pngcrush.png
+  optipng -o7 -q -out "$midFile"-optipng.png "$midFile"-pngcrush.png
+  if $DEBUG ;then
+    echo "tinypng: pngcrush and optipng done"
+  fi
+  pngout -q -y -k0 -s0 "$midFile"-optipng.png "$midFile"-pngout.png
+  if $DEBUG ;then
+    echo "tinypng: pngout done"
+  fi
+  advpng -z -4 "$midFile"-pngout.png > /dev/null
+  mv "$midFile"-pngout.png $1
 }
 
 function cleanup() {
-  rm -rf .tinypngtmp
+  rm -rf $TINYPNG_WORK_DIR/.tmp
 }
 
 # Is target a file or a directory
 function conditions() {
-  mkdir -p .tinypngtmp
+  mkdir -p $TINYPNG_WORK_DIR/.tmp
   if [ -d "$TARGET" ]
   then
     copy
@@ -135,9 +160,9 @@ function conditions() {
   fi
   if [ -f "$TARGET" ]
   then
-    copy
+    #copy
     crushfile
-    backup
+    #backup
     cleanup
   fi
 }
